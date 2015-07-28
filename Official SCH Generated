@@ -1,0 +1,243 @@
+#########################################
+## COMBINING OFFICIAL DATA FOR COURSES##
+#######################################
+
+## libraries utilized
+##      NOTE: if you don't have these installed you will need to 
+##      install them... install.packages("name of package")
+library(plyr); library(dplyr); library(tidyr)
+## ALL COURSE DATA
+## COURSE ENROLLMENT AND SCH GENERATED
+## Step 1: Download the course files and save them as csv files
+##              Note: the Grade data will not be available until 
+##              the mid-term next semester.
+## Step 2: Setting the working directory
+setwd("V:/dept/SRA/Enrollment/Enrollment--Fall, Spring, and Summer/Rscript to Combine Official Data")
+## Step 4: Import the course enrollment file and prepare
+stus <- read.csv("./Data/Course/course_enrollment.csv", stringsAsFactors = FALSE)
+        ## lower casing the colnames
+colnames(stus) <- tolower(colnames(stus))
+        ## selecting the necessary columns and aggregating the students.
+stus <- stus %>% select(setid, 
+                        academic_term, 
+                        student_inst_id,
+                        course_sec_identifier,
+                        course_attempted_hrs, 
+                        course_enrollment_ind) %>%
+        filter(course_enrollment_ind == "CNTENRLY") %>%
+        group_by(setid, 
+                 academic_term, 
+                 course_sec_identifier) %>%
+        summarize(number_enrolled = n(), 
+                  sch_generated = sum(course_attempted_hrs))
+## Step 5: Import in the course name file and prepare
+course <- read.csv("./Data/Course/course_section.csv", stringsAsFactors = FALSE)
+        ## lower casing the names
+colnames(course) <- tolower(colnames(course))
+        ## selecting the necessary columns.
+course <- course %>% select(course_sec_identifier, 
+                            course_acronym, 
+                            course_number, 
+                            course_section_code, 
+                            course_section_name, 
+                            section_instruction_type, 
+                            department_code, 
+                            campus_code)
+## Step 6: pulling in the faculty who teaches the courses and preparing the faculty
+fac <- read.csv("./Data/Course/course_faculty.csv", stringsAsFactors = FALSE)
+        ## lower casing the column names
+colnames(fac) <- tolower(colnames(fac))
+        ## selecting the primary faculty
+fac <- fac %>% filter(primary_faculty_ind == "Y") %>%
+        select(course_sec_identifier, 
+               faculty_inst_id)
+## Step 7: Combining the information together
+results <- course %>% join(fac) %>% 
+        join(stus)
+## Step 8: fixing the course department code
+##      Note: You will need to double check Data Warehouse 
+##      to make sure that no department has changed
+##      function to find unique department codes:
+##      sort(unique(results$department_code))
+results$department_desc[results$course_acronym == "ENVS" |
+                                results$course_acronym == "ETEC"] <- "Dean of Arts and Sciences"
+results$department_desc[results$course_acronym == "AFAM"] <- "African American Studies"
+results$department_desc[results$course_acronym == "COOP"] <- "Cooperative Ed"
+results$department_desc[results$course_acronym == "COPS"] <- "Cooperative Ed"
+results$department_desc[results$course_acronym == "EDUC"] <- "Cooperative Ed"
+results$department_desc[results$course_acronym == "HONS"] <- "Honors Program"
+results$department_desc[results$course_acronym == "INDS"] <- "General Studies"
+results$department_desc[results$course_acronym == "PERS"] <- "Perspectives Courses"
+results$department_desc[results$department_code == 35] <- "Accounting"
+results$department_desc[results$department_code == 36] <- "Marketing and International Business"
+results$department_desc[results$department_code == 37] <- "Economics and Finance"
+results$department_desc[results$department_code == 38] <- "Management and Healthcare Admin"
+results$department_desc[results$department_code == 53] <- "Communication Sciences and Disorders"
+results$department_desc[results$department_code == 54] <- "Early Childhood and Special Ed"
+results$department_desc[results$department_code == 55] <- "Middle Grades, Secondary, Reading, and Deaf Ed"
+results$department_desc[results$department_code == 56] <- "Social Work"
+results$department_desc[results$department_code == 57] <- "Marriage and Family Therapy"
+results$department_desc[results$department_code == 58] <- "Library and Information Science"
+results$department_desc[results$department_code == 86] <- "Health Sciences"
+results$department_desc[results$department_code == 87] <- "Women and Gender Studies"
+results$department_desc[results$department_code == 104] <- "Organizational Leadership"
+results$department_desc[results$department_code == 11102] <- "Biology"
+results$department_desc[results$department_code == 11103] <- "Chemistry"
+results$department_desc[results$department_code == 11104] <- "English"
+results$department_desc[results$department_code == 11106] <- "History"
+results$department_desc[results$department_code == 11107] <- "International Studies"
+results$department_desc[results$department_code == 11108] <- "Math and Computer Science"
+results$department_desc[results$department_code == 11109] <- "Modern and Classical Lang"
+results$department_desc[results$department_code == 11110] <- "Philosophy and Religious Studies"
+results$department_desc[results$department_code == 11111] <- "Physics, Astronomy, and Geosciences"
+results$department_desc[results$department_code == 11112] <- "Political Science"
+results$department_desc[results$department_code == 11113] <- "Sociology, Anthropology, and Criminal Justice"
+results$department_desc[results$department_code == 13102] <- "Curriculum, Leadership, and Technology"
+results$department_desc[results$department_code == 13103] <- "Adult and Career Ed"
+results$department_desc[results$department_code == 13105] <- "Kinesiology and Physical Ed"
+results$department_desc[results$department_code == 13106] <- "Psychology and Counseling"
+results$department_desc[results$department_code == 14102] <- "Art"
+results$department_desc[results$department_code == 14103] <- "Music"
+results$department_desc[results$department_code == 14104] <- "Communication Arts"
+results$department_desc[results$department_code == 15000] <- "Aerospace Studies"
+results$department_desc[results$department_code == 16000] <- "Nursing"
+## Step 9: Assigning the Course College
+##      Note: You will need to double check Data Warehouse 
+##      to make sure that no College and Department has changed
+results$course_college_initials[results$department_desc == "Kinesiology and Physical Ed"] <- "COEHS"
+results$course_college_initials[results$department_desc == "Perspectives Courses"] <- "COAS"
+results$course_college_initials[results$department_desc == "Curriculum, Leadership, and Technology"] <- "COEHS"
+results$course_college_initials[results$department_desc == "Cooperative Ed"] <- "COEHS"
+results$course_college_initials[results$department_desc == "Psychology and Counseling"] <- "COEHS"
+results$course_college_initials[results$department_desc == "Honors Program"] <- "COAS"
+results$course_college_initials[results$department_desc == "Sociology, Anthropology, and Criminal Justice"] <- "COAS"
+results$course_college_initials[results$department_desc == "Accounting"] <- "COBA"
+results$course_college_initials[results$department_desc == "Economics and Finance"] <- "COBA"
+results$course_college_initials[results$department_desc == "Management and Healthcare Admin"] <- "COBA"
+results$course_college_initials[results$department_desc == "Marketing and International Business"] <- "COBA"
+results$course_college_initials[results$department_desc == "Political Science"] <- "COAS"
+results$course_college_initials[results$department_desc == "Music"] <- "COTA"
+results$course_college_initials[results$department_desc == "Communication Sciences and Disorders"] <- "COEHS"
+results$course_college_initials[results$department_desc == "Adult and Career Ed"] <- "COEHS"
+results$course_college_initials[results$department_desc == "Women and Gender Studies"] <- "COAS"
+results$course_college_initials[results$department_desc == "Middle Grades, Secondary, Reading, and Deaf Ed"] <- "COEHS"
+results$course_college_initials[results$department_desc == "English"] <- "COAS"
+results$course_college_initials[results$department_desc == "Nursing"] <- "CONHS"
+results$course_college_initials[results$department_desc == "Health Sciences"] <- "CONHS"
+results$course_college_initials[results$department_desc == "Communication Arts"] <- "COTA"
+results$course_college_initials[results$department_desc == "Social Work"] <- "COEHS"
+results$course_college_initials[results$department_desc == "Philosophy and Religious Studies"] <- "COAS"
+results$course_college_initials[results$department_desc == "Physics, Astronomy, and Geosciences"] <- "COAS"
+results$course_college_initials[results$department_desc == "Marriage and Family Therapy"] <- "COEHS"
+results$course_college_initials[results$department_desc == "Biology"] <- "COAS"
+results$course_college_initials[results$department_desc == "Modern and Classical Lang"] <- "COAS"
+results$course_college_initials[results$department_desc == "International Studies"] <- "COAS"
+results$course_college_initials[results$department_desc == "Chemistry"] <- "COAS"
+results$course_college_initials[results$department_desc == "African American Studies"] <- "COAS"
+results$course_college_initials[results$department_desc == "Art"] <- "COTA"
+results$course_college_initials[results$department_desc == "Early Childhood and Special Ed"] <- "COEHS"
+results$course_college_initials[results$department_desc == "Aerospace Studies"] <- "Academic Affairs"
+results$course_college_initials[results$department_desc == "Library and Information Science"] <- "COEHS"
+results$course_college_initials[results$department_desc == "Math and Computer Science"] <- "COAS"
+results$course_college_initials[results$department_desc == "Organizational Leadership"] <- "COAS"
+results$course_college_initials[results$department_desc == "General Studies"] <- "COAS"
+results$course_college_initials[results$department_desc == "Dean of Arts and Sciences"] <- "COAS"
+results$course_college_initials[results$department_desc == "History"] <- "COAS"
+results$course_college_initials[results$course_acronym == "HADM"] <- "Academic Affairs"
+## Step 10: Fixing the faculty department and faculty college
+        ## will need to take the faculty id, faculty department, 
+        ## faculty college code, and employment status code out
+        ##  of data warehouse for the current term.
+        ## will need to import the information to attach the information
+fac.college <- read.csv("./Data/Course/faculty_college_dept_timestatus.csv", stringsAsFactors = FALSE)
+colnames(fac.college) <- tolower(colnames(fac.college))
+        ## fixing the faculty course college
+fac.college$fac_college_initial[fac.college$fac_college_code == 0] <- "Academic Affairs"
+fac.college$fac_college_initial[fac.college$fac_college_code == 1] <- "COAS"
+fac.college$fac_college_initial[fac.college$fac_college_code == 2] <- "COBA"
+fac.college$fac_college_initial[fac.college$fac_college_code == 3] <- "COEHS"
+fac.college$fac_college_initial[fac.college$fac_college_code == 4] <- "COTA"
+fac.college$fac_college_initial[fac.college$fac_college_code == 6] <- "CONHS"
+        ## removing the faculty college code
+fac.college <- fac.college[, -2]
+        ## renaming the faculty id to match
+colnames(fac.college)[1] <- "faculty_inst_id"
+        ## adding the faculty information to the results
+results <- results %>% left_join(fac.college)
+        ## fixing the missing individuals
+        ##Finding the ones that are missing
+results[which(is.na(results$fac_college_initial) &
+                      !is.na(results$faculty_inst_id)), c(9,18)]
+        ## use data warehouse to find the most recent
+        ## college and department to add to the missing info
+        ## Missing indiviual One
+results$fac_department[results$faculty_inst_id == Place ID Number here] <- "Place Depart here'
+results$employment_status[results$faculty_inst_id == Place ID Number here] <- "Place Time status here"
+results$fac_college_initial[results$faculty_inst_id == Place ID Number here] <- "Place College Initials Here"
+        ## Assigning the remaining the Non-VSU faculty ID
+results$fac_department[is.na(results$faculty_inst_id)] <- "Non-VSU"
+results$employment_status[is.na(results$faculty_inst_id)] <- "Non-VSU"
+results$fac_college_initial[is.na(results$faculty_inst_id)] <- "Non-VSU"
+        ## Rerun to double check that the Non-VSU was assigned
+results[which(is.na(results$faculty_inst_id)), c(9,18)]
+## Step 11: Creating the course level
+results$course_level <- substr(results$course_number, 1, 1)
+results$course_level[ results$course_number == "97" |
+                              results$course_number == "99"] <- "0"
+results$course_level <- as.numeric(results$course_level)
+results$course_level_desc <- "Learning Support"
+results$course_level_desc[results$course_level > 0] <- "Lower Division"
+results$course_level_desc[results$course_level > 2] <- "Upper Division"
+results$course_level_desc[results$course_level > 4] <- "Graduate"
+## Step 12: creating a course campus description
+results$campus_desc[results$campus_code == "A"] <- "Main Campus"
+results$campus_desc[results$campus_code == "5"] <- "Online Campus"
+results$campus_desc[results$campus_code == "Z"] <- "Off Campus"
+results$campus_desc[results$campus_code == "7"] <- "WebMBA Campus"
+results$campus_desc[results$campus_code == "EM"] <- "eMajor Campus"
+results$campus_desc[results$campus_code == "3"] <- "Military Base Campus"
+results$campus_desc[results$campus_code == "C"] <- "Kingsbay Campus"
+results$campus_desc[results$campus_code == "DHY"] <- "Dental Hygiene"
+results$campus_desc[results$campus_code == "GML"] <- "Georgia On My Line"
+results$campus_desc[results$campus_code == "6"] <- "eCore Campus"
+## Step 13: creating a course campus grouping
+results$campus_group[results$campus_code == "A"] <- "Main Campus"
+results$campus_group[results$campus_code == "5"] <- "Online"
+results$campus_group[results$campus_code == "Z"] <- "Off Campus"
+results$campus_group[results$campus_code == "7"] <- "Online"
+results$campus_group[results$campus_code == "EM"] <- "Online"
+results$campus_group[results$campus_code == "3"] <- "Off Campus"
+results$campus_group[results$campus_code == "C"] <- "Off Campus"
+results$campus_group[results$campus_code == "DHY"] <- "Off Campus"
+results$campus_group[results$campus_code == "GML"] <- "Online"
+results$campus_group[results$campus_code == "6"] <- "Online"
+## Step 14: creating insturction type desc
+results$section_instruction_desc[results$section_instruction_type == 10] <- "Lecture"
+results$section_instruction_desc[results$section_instruction_type == 11] <- "Lect/SupLab"
+results$section_instruction_desc[results$section_instruction_type == 12] <- "Lect/UnsupLab"
+results$section_instruction_desc[results$section_instruction_type == 20] <- "Seminar"
+results$section_instruction_desc[results$section_instruction_type == 30] <- "Sup Lab"
+results$section_instruction_desc[results$section_instruction_type == 40] <- "Unsup Lab"
+results$section_instruction_desc[results$section_instruction_type == 50] <- "Indep Study"
+results$section_instruction_desc[results$section_instruction_type == 55] <- "Directed Study"
+results$section_instruction_desc[results$section_instruction_type == 57] <- "Asynchronous"
+results$section_instruction_desc[results$section_instruction_type == 60] <- "Prac Teach"
+results$section_instruction_desc[results$section_instruction_type == 70] <- "Internship"
+results$section_instruction_desc[results$section_instruction_type == 80] <- "Practicium"
+results$section_instruction_desc[results$section_instruction_type == 81] <- "Intern/Pratic"
+results$section_instruction_desc[results$section_instruction_type == 90] <- "Thesis/Diss"
+results$section_instruction_desc[results$section_instruction_type == 91] <- "Thesis"
+results$section_instruction_desc[results$section_instruction_type == 92] <- "Dissertation"
+results$section_instruction_desc[results$section_instruction_type == NA] <- "Undefined"
+## Step 15: kicking the data out
+write.csv(results, "official_course_hours_generated.csv")
+
+
+
+
+
+
+
+
+
+
