@@ -1,0 +1,939 @@
+############################################
+## COMBINING OFFICIAL DATA FOR ENROLLMENT##
+##########################################
+
+## libraries utilized
+##      NOTE: if you don't have these installed you will need to 
+##      install them... install.packages("name of package")
+library(plyr); library(dplyr); library(tidyr)
+library(lubridate)
+## ALL ENROLLMENT DATA
+
+## Step 1: Download the course files and save them as csv files
+## pdc_admstu_adv_standing_mimic - Student Advanced Standing    advanced_standing
+## pdc_admstu_attribute_mimic - Student Attributes		attributes
+## pdc_admstu_confidential_mimic - Student Confidential		confidential
+## pdc_admstu_enr_address_mimic - Student Address		address
+## pdc_admstu_enr_matric_mimic - Student Matriculation		matriculation
+## pdc_admstu_enr_req_mimic - Student CPC and LS Req		cpc_ls
+## pdc_admstu_fee_class_mimic - Student Fee Classification	fee_class
+## pdc_admstu_military_mimic - Student Military                 military
+## pdc_admstu_prog_enroll_mimic - Student Program Enrollment	program_enrollment
+## pdc_admstu_reg_cpc_mimic - Student CPC and Regents		cpc_regents
+## pdc_admstu_ste_attr_mimic - Student Enrollment		enrollment
+## pdc_admstu_test_results_mimic - Student Test Results		test_scores
+
+## Step 2: Setting the working directory
+## You will need to set the working directory to the current term you are working in
+setwd("V:/dept/SRA/Enrollment/Enrollment--Fall, Spring, and Summer/Rscript to Combine Official Data")
+
+## Note: You will probably have to double check all of the read.csv(...) to ensure that 
+##       it will pull in the correct data
+
+## Step 3: Importing the base enrollment file and preparing the file
+enrollment <- read.csv("./Data/Enrollment/enrollment.csv", stringsAsFactors = FALSE)
+        ## lower casing the colnames
+colnames(enrollment) <- tolower(colnames(enrollment))
+        ## selecting the needed columns
+enrollment <- enrollment %>% 
+        filter(enrollment_status_code == "HEADCNTY") %>% 
+        select(setid, academic_term, coll_type, student_inst_id, 
+               admit_type, student_academic_level, student_level_nbr, 
+               student_type_code, previous_degree_type_code, 
+               previous_degree_inst_code, previous_degree_gpa, 
+               student_residency_code, stu_crs_census_status, 
+               inst_term_hrs_attempted)
+        ## fixing the admit type code
+enrollment$admit_type_desc[enrollment$admit_type == "AU"] <- "Auditor"
+enrollment$admit_type_desc[enrollment$admit_type == "CA"] <- "Career Associate - Core"
+enrollment$admit_type_desc[enrollment$admit_type == "CN"] <- "Career Associate - Non Core"
+enrollment$admit_type_desc[enrollment$admit_type == "CC"] <- "Career Certificate"
+enrollment$admit_type_desc[enrollment$admit_type == "DE"] <- "Dual Enrollment"
+enrollment$admit_type_desc[enrollment$admit_type == "ET"] <- "E-Core Transient"
+enrollment$admit_type_desc[enrollment$admit_type == "EC"] <- "Early College"
+enrollment$admit_type_desc[enrollment$admit_type == "FD"] <- "Freshman Displaced"
+enrollment$admit_type_desc[enrollment$admit_type == "FI"] <- "Freshman, International"
+enrollment$admit_type_desc[enrollment$admit_type == "NF"] <- "Freshman, Non-Traditional"
+enrollment$admit_type_desc[enrollment$admit_type == "FO"] <- "Freshman, Outstanding Student"
+enrollment$admit_type_desc[enrollment$admit_type == "JE"] <- "Joint Enrollment/Early Admission"
+enrollment$admit_type_desc[enrollment$admit_type == "MR"] <- "Move on When Ready"
+enrollment$admit_type_desc[enrollment$admit_type == "ND"] <- "Non-Degree"
+enrollment$admit_type_desc[enrollment$admit_type == "PB"] <- "Post Baccalaureate"
+enrollment$admit_type_desc[enrollment$admit_type == "RE"] <- "Readmit"
+enrollment$admit_type_desc[enrollment$admit_type == "RA"] <- "Residential Academy"
+enrollment$admit_type_desc[enrollment$admit_type == "FR"] <- "Traditional Freshman"
+enrollment$admit_type_desc[enrollment$admit_type == "FL"] <- "Traditional Freshman, Limited"
+enrollment$admit_type_desc[enrollment$admit_type == "FP"] <- "Traditional Freshman, Pres. Excep."
+enrollment$admit_type_desc[enrollment$admit_type == "TD"] <- "Transfer Displaced"
+enrollment$admit_type_desc[enrollment$admit_type == "TE"] <- "Transfer Exemption"
+enrollment$admit_type_desc[enrollment$admit_type == "TL"] <- "Transfer, Limited"
+enrollment$admit_type_desc[enrollment$admit_type == "NT"] <- "Transfer, Non-Traditional"
+enrollment$admit_type_desc[enrollment$admit_type == "TP"] <- "Transfer, Presidential Exception"
+enrollment$admit_type_desc[enrollment$admit_type == "TR"] <- "Transfer, Regular"
+enrollment$admit_type_desc[enrollment$admit_type == "TN"] <- "Transient"
+enrollment$admit_type_desc[is.na(enrollment$admit_type)] <- "Undefined"
+enrollment$admit_type_desc[is.na(enrollment$admit_type_desc)] <- "Unknown"
+        ## fixing the student academic level
+enrollment$student_academic_level_desc[enrollment$student_level_nbr < 60] <- "UG"
+enrollment$student_academic_level_desc[enrollment$student_level_nbr >= 60] <- "G"
+        ## fixing the student level number
+enrollment$student_level_desc[enrollment$student_level_nbr == 10] <- "Freshman"
+enrollment$student_level_desc[enrollment$student_level_nbr == 11] <- "Joint Enrollment"
+enrollment$student_level_desc[enrollment$student_level_nbr == 20] <- "Sophomore"
+enrollment$student_level_desc[enrollment$student_level_nbr == 30] <- "Junior"
+enrollment$student_level_desc[enrollment$student_level_nbr == 40] <- "Senior"
+enrollment$student_level_desc[enrollment$student_level_nbr == 50] <- "Transient"
+enrollment$student_level_desc[enrollment$student_level_nbr == 51] <- "Other"
+enrollment$student_level_desc[enrollment$student_level_nbr == 52] <- "Auditor"
+enrollment$student_level_desc[enrollment$student_level_nbr == 53] <- "Post Bac, NOD"
+enrollment$student_level_desc[enrollment$student_level_nbr == 56] <- "Post Bac, DS"
+enrollment$student_level_desc[enrollment$student_level_nbr == 60] <- "Post Bac"
+enrollment$student_level_desc[enrollment$student_level_nbr == 72] <- "Masters"
+enrollment$student_level_desc[enrollment$student_level_nbr == 74] <- "Education Specialist"
+enrollment$student_level_desc[enrollment$student_level_nbr == 76] <- "Doctoral"
+enrollment$student_level_desc[enrollment$student_level_nbr == 80] <- "First Professional"
+enrollment$student_level_desc[enrollment$student_level_nbr == 90] <- "Medical Interns/Residents"
+        ## Fixing the student type code
+enrollment$student_type_desc[enrollment$student_type_code == "A"] <- "Auditor"
+enrollment$student_type_desc[enrollment$student_type_code == "B"] <- "Post Bacc, NOD"
+enrollment$student_type_desc[enrollment$student_type_code == "C"] <- "Continuing or Returning"
+enrollment$student_type_desc[enrollment$student_type_code == "D"] <- "Dual Enrollment"
+enrollment$student_type_desc[enrollment$student_type_code == "F"] <- "New Freshman"
+enrollment$student_type_desc[enrollment$student_type_code == "G"] <- "New Graduate Student"
+enrollment$student_type_desc[enrollment$student_type_code == "I"] <- "New Intern/Resident"
+enrollment$student_type_desc[enrollment$student_type_code == "J"] <- "Joint Enrollment"
+enrollment$student_type_desc[enrollment$student_type_code == "L"] <- "Transfer First Professional"
+enrollment$student_type_desc[enrollment$student_type_code == "N"] <- "NOD Undergraduate"
+enrollment$student_type_desc[enrollment$student_type_code == "P"] <- "New First Professional"
+enrollment$student_type_desc[enrollment$student_type_code == "T"] <- "New Undergraduate Transfer"
+enrollment$student_type_desc[enrollment$student_type_code == "U"] <- "Not Report"
+enrollment$student_type_desc[enrollment$student_type_code == "X"] <- "Transient"
+enrollment$student_type_desc[enrollment$student_type_code == "Y"] <- "Transfer Graduate"
+        ## Fixing the previous degree type code
+enrollment$previous_degree_type_desc[enrollment$previous_degree_type_code == "B"] <- "Bachelors"
+enrollment$previous_degree_type_desc[enrollment$previous_degree_type_code == "M"] <- "Masters"
+enrollment$previous_degree_type_desc[enrollment$previous_degree_type_code == "E"] <- "Education Specialist"
+enrollment$previous_degree_type_desc[enrollment$previous_degree_type_code == "D"] <- "Doctorate"
+enrollment$previous_degree_type_desc[is.na(enrollment$previous_degree_type_desc)] <- "None"
+        ## fixing the previous institution code
+        ## this will need the fice codes (OPE) from ipeds it if it hasn't be already downloaded
+        ## Note Some of the institution codes will not match
+fice <- read.csv("V:/dept/SRA/Enrollment/Enrollment--Fall, Spring, and Summer/Rscript to Combine Official Data/Data/Enrollment/fice_codes.csv", stringsAsFactors = FALSE)[,-1]
+colnames(fice) <- c("previous_degree_inst_desc", "previous_degree_inst_code")
+fice$previous_degree_inst_code <- as.character(fice$previous_degree_inst_code/100)
+fice <- fice[!duplicated(fice$previous_degree_inst_code),]
+enrollment <- enrollment %>% left_join(fice)
+enrollment$previous_degree_inst_desc <- ifelse(enrollment$previous_degree_type_desc == "None" &
+                                                       is.na(enrollment$previous_degree_inst_desc), "None", 
+                                               enrollment$previous_degree_inst_desc)
+enrollment$previous_degree_inst_desc[is.na(enrollment$previous_degree_inst_desc)] <- "Unknown"
+rm(fice)
+        ## fixing time status
+enrollment$time_status[enrollment$student_academic_level_desc == "UG" &
+                                enrollment$inst_term_hrs_attempted >= 12] <- "FT"
+enrollment$time_status[enrollment$student_academic_level_desc != "UG" &
+                               enrollment$inst_term_hrs_attempted >= 9] <- "FT"
+enrollment$time_status[is.na(enrollment$time_status)] <- "PT"
+
+## Step 4: importing the address file and preparing it
+addy <- read.csv("./Data/Enrollment/address.csv", stringsAsFactors = FALSE)
+        ## lower casing the colnames
+colnames(addy) <- tolower(colnames(addy))
+        ## selecting the needed columns
+addy <- addy %>% select(student_inst_id, address_street1, address_street2, 
+                        address_street3, address_city, address_state_code, 
+                        address_country_code, address_postal_code)
+        ## Since there is no data modifications, joing the data together
+enrollment <- enrollment %>% left_join(addy)
+rm(addy)
+
+## Step 5: importing the confidential file and preparing it
+confid <- read.csv("./Data/Enrollment/confindential.csv", stringsAsFactors = FALSE)
+        ## lower casing the colnames
+colnames(confid) <- tolower(colnames(confid))
+        ## selecting the needed columns
+confid <- confid %>% select(student_inst_id, confidentiality_code, student_last_name, 
+                            student_first_name, student_middle_name, student_name_suffix, 
+                            student_birth_date, citizenship_status_code, citizen_country_code, 
+                            county_origin_code, state_origin_code, state_residence_code, 
+                            gender_code, race_ethnicity_code, new_ethnicity_code, 
+                            asian_ind, black_ind, native_ind, pacific_ind, white_ind, race_unknown_ind)
+        ## Fixing age of student
+        ## Note: The correct census will need to be selected
+        ## Will need to update the year
+fall.date <- as.Date("10/07/2015", format = "%m/%d/%Y")
+#spring.date <- as.Date("02/22/2015", format = "%m/%d/%Y")
+#summer.date <- as.Date("07/08/2015", format = "%m/%d/%Y")
+confid$student_birth_date <- as.Date(confid$student_birth_date, format = "%m/%d/%Y")
+confid$age <- year(as.period(fall.date-confid$student_birth_date, units = "year"))
+        ## fixing citizenship
+confid$citizenship_status_desc[confid$citizenship_status_code == "C"] <- "Citizen"
+confid$citizenship_status_desc[confid$citizenship_status_code == "R"] <- "Resident Alien"
+confid$citizenship_status_desc[confid$citizenship_status_code == "A"] <- "Non-resident Alien"
+        ## fixing the country
+country <- read.csv("V:/dept/SRA/Enrollment/Enrollment--Fall, Spring, and Summer/Rscript to Combine Official Data/Data/Enrollment/country_code.csv", stringsAsFactors = FALSE)[, -(3:4)]
+colnames(country) <- c("citizen_country_desc", "citizen_country_code")
+confid <- confid %>% left_join(country)
+rm(country)
+        ## fixing the county origin
+county <- read.csv("V:/dept/SRA/Enrollment/Enrollment--Fall, Spring, and Summer/Rscript to Combine Official Data/Data/Enrollment/county_code.csv", stringsAsFactors = FALSE)
+colnames(county) <- c("county_origin_desc", "county_origin_code", "county_origin_county_seat", "county_origin_FIPS_code")
+county$county_origin_code <- as.numeric(county$county_origin_code)
+confid <- confid %>% left_join(county)
+rm(county)
+        ## fixing the state origin and state residency
+state <- read.csv("V:/dept/SRA/Enrollment/Enrollment--Fall, Spring, and Summer/Rscript to Combine Official Data/Data/Enrollment/state_code.csv", stringsAsFactors = FALSE)[, -3]
+                ## state origin
+colnames(state) <- c("state_origin_desc", "state_origin_code")
+confid <- confid %>% left_join(state)
+                ## state residence
+colnames(state) <- c("state_residence_desc", "state_residence_code")
+confid <- confid %>% left_join(state)
+rm(state)
+        ## fixing the race/Ethnicity
+confid$new_ethnicity_code[is.na(confid$new_ethnicity_code)] <- 0
+confid$race_ethnicity <- NA
+                ## hispanic
+confid$race_ethnicity[confid$new_ethnicity_code == 2] <- "Hispanic"
+                ## asian
+confid$race_ethnicity[confid$new_ethnicity_code != 2 & 
+                              confid$asian_ind == "Y" &
+                              confid$black_ind == "N" &
+                              confid$native_ind == "N" &
+                              confid$pacific_ind == "N" &
+                              confid$white_ind == "N" &
+                              confid$race_unknown_ind == "N"] <- "Asian"
+                ## Black or African American
+confid$race_ethnicity[confid$new_ethnicity_code != 2 & 
+                              confid$asian_ind == "N" &
+                              confid$black_ind == "Y" &
+                              confid$native_ind == "N" &
+                              confid$pacific_ind == "N" &
+                              confid$white_ind == "N" &
+                              confid$race_unknown_ind == "N"] <- "Black/African American"
+                ## American Indian or Alaskan Native
+confid$race_ethnicity[confid$new_ethnicity_code != 2 & 
+                              confid$asian_ind == "N" &
+                              confid$black_ind == "N" &
+                              confid$native_ind == "Y" &
+                              confid$pacific_ind == "N" &
+                              confid$white_ind == "N" &
+                              confid$race_unknown_ind == "N"] <- "American Indian/Alaskan Native"
+                ## Pacific Islander/Native Hawaiian
+confid$race_ethnicity[confid$new_ethnicity_code != 2 & 
+                              confid$asian_ind == "N" &
+                              confid$black_ind == "N" &
+                              confid$native_ind == "N" &
+                              confid$pacific_ind == "Y" &
+                              confid$white_ind == "N" &
+                              confid$race_unknown_ind == "N"] <- "Pacific Islander/Native Hawaiian"
+                ## White
+confid$race_ethnicity[confid$new_ethnicity_code != 2 & 
+                              confid$asian_ind == "N" &
+                              confid$black_ind == "N" &
+                              confid$native_ind == "N" &
+                              confid$pacific_ind == "N" &
+                              confid$white_ind == "Y" &
+                              confid$race_unknown_ind == "N"] <- "White"
+                ## Unknown
+confid$race_ethnicity[confid$new_ethnicity_code != 2 & 
+                              confid$asian_ind == "N" &
+                              confid$black_ind == "N" &
+                              confid$native_ind == "N" &
+                              confid$pacific_ind == "N" &
+                              confid$white_ind == "N" &
+                              confid$race_unknown_ind == "Y"] <- "Unknown"
+confid$race_ethnicity[is.na(confid$race_ethnicity)] <- "Multiracial"
+        ## joining the date together
+enrollment <- enrollment %>% left_join(confid)
+        ## creating an adult learner indicator
+enrollment$adult_learner[enrollment$student_academic_level_desc == "UG" &
+                                 enrollment$age < 25] <- "Traditional Learner"
+enrollment$adult_learner[enrollment$student_academic_level_desc == "UG" &
+                                 enrollment$age >= 25] <- "Adult Learner"
+enrollment$adult_learner[enrollment$student_academic_level_desc == "G"] <- "Not Applicable"
+rm(confid)
+
+## Step 6: importing the matriculation file and preparing it
+matric <- read.csv("./Data/Enrollment/matriculation.csv", stringsAsFactors = FALSE)
+        ## lower casing the colnames
+colnames(matric) <- tolower(colnames(matric))
+        ## selecting the columns needed
+matric <- matric %>% select(student_inst_id, matriculation_term, hs_graduation_yr, 
+                            hs_diploma_type_code, hs_gpa, college_board_code)
+        ## joining the data together
+enrollment <- enrollment %>% left_join(matric)
+rm(matric)
+
+## Step 7: importing the program file and preparing it
+program <- read.csv("./Data/Enrollment/program_enrollment.csv", stringsAsFactors = FALSE)
+        ## lower casing the column names
+colnames(program) <- tolower(colnames(program))
+        ## selecting only the columns needed
+program <- program %>% select(student_inst_id, cip_code, degree_level_code, 
+                              degree_acronym, unique_seq_no, inst_major_code, 
+                              fos_category, fos_priority_no)
+        ## fixing the degree level code
+degree <- read.csv("V:/dept/SRA/Enrollment/Enrollment--Fall, Spring, and Summer/Rscript to Combine Official Data/Data/Enrollment/degree_level.csv", stringsAsFactors = FALSE)[, 1:2]
+colnames(degree) <- c("degree_level_code", "degree_level_desc")
+program <- program %>% left_join(degree)
+rm(degree)
+        ## fixing the degree acronym code
+degree <- read.csv("V:/dept/SRA/Enrollment/Enrollment--Fall, Spring, and Summer/Rscript to Combine Official Data/Data/Enrollment/degree_acronym.csv", stringsAsFactors = FALSE)[, 1:2]
+colnames(degree) <- c("degree_acronym", "degree_name")
+program <- program %>% left_join(degree)
+rm(degree)
+program$degree_name[is.na(program$degree_name)] <- "Non-Degree"
+        ## fixing the program name--full name
+program$major_full_name[program$cip_code == 9010101 & program$inst_major_code == "SPC"] <- "Speech Communication" 
+program$major_full_name[program$cip_code == 9010201 & program$inst_major_code == "COM"] <- "Communication"
+program$major_full_name[program$cip_code == 9010201 & program$inst_major_code == "MAS"] <- "Mass Media"
+program$major_full_name[program$cip_code == 11010101 & program$inst_major_code == "CS"] <- "Computer Science"
+program$major_full_name[program$cip_code == 11040101 & program$inst_major_code == "CIS"] <- "Computer Information Sciences"
+program$major_full_name[program$cip_code == 13030100 & program$inst_major_code == "C&I"] <- "Curriculum and Instruction"
+program$major_full_name[program$cip_code == 13040101 & program$inst_major_code == "LDR"] <- "Leadership"
+program$major_full_name[program$cip_code == 13040301 & program$inst_major_code == "AC"] <- "Adult and Career Education"
+program$major_full_name[program$cip_code == 13040400 & program$inst_major_code == "OLE"] <- "On-line Endorsement"
+program$major_full_name[program$cip_code == 13040400 & program$inst_major_code == "OLT"] <- "On-line Teaching Certificate"
+program$major_full_name[program$cip_code == 13040401 & program$inst_major_code == "EDL"] <- "Educational Leadership"
+program$major_full_name[program$cip_code == 13050101 & program$inst_major_code == "IT"] <- "Instructional Technology"
+program$major_full_name[program$cip_code == 13100101 & program$inst_major_code == "SPE"] <- "Special Education"
+program$major_full_name[program$cip_code == 13100101 & program$inst_major_code == "SPD"] <- "Special Education"
+program$major_full_name[program$cip_code == 13100101 & program$inst_major_code == "SPEX"] <- "Special Education, pre-major"
+program$major_full_name[program$cip_code == 13100101 & program$inst_major_code == "SPDX"] <- "Special Education, pre-major"
+program$major_full_name[program$cip_code == 13110101 & program$inst_major_code == "SCO"] <- "School Counseling"
+program$major_full_name[program$cip_code == 13120301 & program$inst_major_code == "MGE"] <- "Middle Grades Education Grades 4-8"
+program$major_full_name[program$cip_code == 13120301 & program$inst_major_code == "MGEX"] <- "Middle Grades Education Grades 4-8, pre-major"
+program$major_full_name[program$cip_code == 13120301 & program$inst_major_code == "MGMS"] <- "Middle Grades Education Grades 4-8, Math & Science"
+program$major_full_name[program$cip_code == 13120302 & program$inst_major_code == "MID"] <- "Middle Grades Education"
+program$major_full_name[program$cip_code == 13120501 & program$inst_major_code == "SED"] <- "Secondary Education"
+program$major_full_name[program$cip_code == 13120502 & program$inst_major_code == "SCD"] <- "Secondary Education"
+program$major_full_name[program$cip_code == 13121001 & program$inst_major_code == "ECEX"] <- "Early Childhood Eductaion, pre-major"
+program$major_full_name[program$cip_code == 13121001 & program$inst_major_code == "ECE"] <- "Early Childhood Education"
+program$major_full_name[program$cip_code == 13129901 & program$inst_major_code == "TL"] <- "Teacher Leadership"
+program$major_full_name[program$cip_code == 13129901 & program$inst_major_code == "CIAT"] <- "Curriculum and Instruction, Accomplished Teaching"
+program$major_full_name[program$cip_code == 13129901 & program$inst_major_code == "CI"] <- "Curriculum and Instruction"
+program$major_full_name[program$cip_code == 13130201 & program$inst_major_code == "ARE"] <- "Art Education"
+program$major_full_name[program$cip_code == 13130900 & program$inst_major_code == "ACE"] <- "Adult & Career Education"
+program$major_full_name[program$cip_code == 13131201 & program$inst_major_code == "MUE"] <- "Music Education"
+program$major_full_name[program$cip_code == 13131401 & program$inst_major_code == "PE"] <- "Health and Physical Education"
+program$major_full_name[program$cip_code == 13131401 & program$inst_major_code == "PEX"] <- "Health and Physical Education, pre-major"
+program$major_full_name[program$cip_code == 13131401 & program$inst_major_code == "COCP"] <- "Coaching Pedagogy in Physcial Education"
+program$major_full_name[program$cip_code == 13131501 & program$inst_major_code == "RDE"] <- "Reading Education"
+program$major_full_name[program$cip_code == 13132001 & program$inst_major_code == "WED"] <- "Workforce Education and Developement"
+program$major_full_name[program$cip_code == 13132001 & program$inst_major_code == "TIE"] <- "Workforce Education and Education"
+program$major_full_name[program$cip_code == 15069901 & program$inst_major_code == "HCP"] <- "Human Capital Performance"
+program$major_full_name[program$cip_code == 15069901 & program$inst_major_code == "HCPO"] <- "Human Capital Performance-Online"
+program$major_full_name[program$cip_code == 16090101 & program$inst_major_code == "FR"] <- "French"
+program$major_full_name[program$cip_code == 16090501 & program$inst_major_code == "SPA"] <- "Spanish"
+program$major_full_name[program$cip_code == 16160301 & program$inst_major_code == "ASLX"] <- "American Sign Language, pre-major"
+program$major_full_name[program$cip_code == 16160301 & program$inst_major_code == "ASL"] <- "American Sign Language"
+program$major_full_name[program$cip_code == 22030201 & program$inst_major_code == "LA"] <- "Legal Assistant Studies"
+program$major_full_name[program$cip_code == 23010101 & program$inst_major_code == "ENG"] <- "English"
+program$major_full_name[program$cip_code == 24010101 & program$inst_major_code == "AAA"] <- "Associate of Arts"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "LAS"] <- "Undecided"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "BAAC"] <- "Accounting, pre-major"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "BAMG"] <- "Management, pre-major"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "BAMK"] <- "Marketing, pre-major"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "BA"] <- "Business Administration, pre-major"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "BAFI"] <- "Finance, pre-major"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "BAIB"] <- "International Business, pre-major"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "EGS"] <- "Engineering Studies (2yr)"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "BAHC"] <- "Healthcare Administration, pre-major"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "BAEC"] <- "Economics, pre-major"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "SSS"] <- "Learning Support"
+program$major_full_name[program$cip_code == 24010299 & program$inst_major_code == "CCT"] <- "Transient"
+program$major_full_name[program$cip_code == 24019901 & program$inst_major_code == "INDS"] <- "Interdisplinary Studies"
+program$major_full_name[program$cip_code == 24019901 & program$inst_major_code == "GSP"] <- "Interdisplinary Studies"
+program$major_full_name[program$cip_code == 25010101 & program$inst_major_code == "LIS"] <- "Library & Information Studies"
+program$major_full_name[program$cip_code == 26010101 & program$inst_major_code == "BIO"] <- "Biology"
+program$major_full_name[program$cip_code == 27010101 & program$inst_major_code == "MAT"] <- "Mathematics"
+program$major_full_name[program$cip_code == 27030101 & program$inst_major_code == "MAA"] <- "Applied Mathematics"
+program$major_full_name[program$cip_code == 31059901 & program$inst_major_code == "PEP"] <- "Exercise Physiology, pre-major"
+program$major_full_name[program$cip_code == 31059901 & program$inst_major_code == "EP"] <- "Exercise Physiology"
+program$major_full_name[program$cip_code == 38000100 & program$inst_major_code == "PHRS"] <- "Philosophy & Religious Studies"
+program$major_full_name[program$cip_code == 40020100 & program$inst_major_code == "AST"] <- "Astronomy"
+program$major_full_name[program$cip_code == 40050101 & program$inst_major_code == "CHM"] <- "Chemistry"
+program$major_full_name[program$cip_code == 40060101 & program$inst_major_code == "EVS"] <- "Environmental Geosciences"
+program$major_full_name[program$cip_code == 40080101 & program$inst_major_code == "PHY"] <- "Physics"
+program$major_full_name[program$cip_code == 42010100 & program$inst_major_code == "GIFT"] <- "Gifted Endorsement"
+program$major_full_name[program$cip_code == 42010101 & program$inst_major_code == "PSY"] <- "Psychology"
+program$major_full_name[program$cip_code == 42010101 & program$inst_major_code == "PSYX"] <- "Psychology, pre-major"
+program$major_full_name[program$cip_code == 43010401 & program$inst_major_code == "CRM"] <- "Criminal Justice"
+program$major_full_name[program$cip_code == 43010401 & program$inst_major_code == "CRMO"] <- "Criminal Justice, online"
+program$major_full_name[program$cip_code == 44040100 & program$inst_major_code == "PA"] <- "Public Administration"
+program$major_full_name[program$cip_code == 44070100 & program$inst_major_code == "SWK"] <- "Social Work"
+program$major_full_name[program$cip_code == 45100101 & program$inst_major_code == "POS"] <- "Political Science"
+program$major_full_name[program$cip_code == 45110100 & program$inst_major_code == "SOCG"] <- "Sociology"
+program$major_full_name[program$cip_code == 45130100 & program$inst_major_code == "SOC"] <- "Sociology & Anthropology"
+program$major_full_name[program$cip_code == 50030101 & program$inst_major_code == "DANC"] <- "Dance"
+program$major_full_name[program$cip_code == 50040800 & program$inst_major_code == "ID"] <- "Interior Design"
+program$major_full_name[program$cip_code == 50050101 & program$inst_major_code == "THA"] <- "Theatre Arts"
+program$major_full_name[program$cip_code == 50070101 & program$inst_major_code == "ART"] <- "Art"
+program$major_full_name[program$cip_code == 50090101 & program$inst_major_code == "MUS"] <- "Music"
+program$major_full_name[program$cip_code == 50090301 & program$inst_major_code == "MUP"] <- "Music Performance"
+program$major_full_name[program$cip_code == 51020301 & program$inst_major_code == "SLPD"] <- "Clinical Doctorate in Speech Language Pathology"
+program$major_full_name[program$cip_code == 51020301 & program$inst_major_code == "COMD"] <- "Communication Disorders"
+program$major_full_name[program$cip_code == 51020301 & program$inst_major_code == "COMX"] <- "Communication Disorders, pre-major"
+program$major_full_name[program$cip_code == 51069901 & program$inst_major_code == "DHG"] <- "Dental Hygiene"
+program$major_full_name[program$cip_code == 51070101 & program$inst_major_code == "HCAD"] <- "Healthcare Administration"
+program$major_full_name[program$cip_code == 51091301 & program$inst_major_code == "PAT"] <- "Athletic Training, pre-major"
+program$major_full_name[program$cip_code == 51091301 & program$inst_major_code == "AT"] <- "Athletic Training"
+program$major_full_name[program$cip_code == 51150501 & program$inst_major_code == "MFT"] <- "Marriage & Family Therapy"
+program$major_full_name[program$cip_code == 51380101 & program$inst_major_code == "NUR"] <- "Nursing"
+program$major_full_name[program$cip_code == 51380101 & program$inst_major_code == "PNUR"] <- "Nursing, pre-major"
+program$major_full_name[program$cip_code == 51380105 & program$inst_major_code == "MNUR"] <- "Nursing"
+program$major_full_name[program$cip_code == 51380105 & program$inst_major_code == "NRN"] <- "Nursing, RN to BSN"
+program$major_full_name[program$cip_code == 52020101 & program$inst_major_code == "MBA"] <- "Master of Business Administration"
+program$major_full_name[program$cip_code == 52020101 & program$inst_major_code == "MGT"] <- "Managment"
+program$major_full_name[program$cip_code == 52021300 & program$inst_major_code == "ORGL"] <- "Organizational Leadership"
+program$major_full_name[program$cip_code == 52030100 & program$inst_major_code == "ACC"] <- "Accounting"
+program$major_full_name[program$cip_code == 52040101 & program$inst_major_code == "OAT"] <- "Office Administration & Technology"
+program$major_full_name[program$cip_code == 52040101 & program$inst_major_code == "OATX"] <- "Office Administration & Technology, pre-major"
+program$major_full_name[program$cip_code == 52040101 & program$inst_major_code == "OATO"] <- "Office Administration & Technology, online"
+program$major_full_name[program$cip_code == 52040101 & program$inst_major_code == "ADS"] <- "Office Administration & Technology"
+program$major_full_name[program$cip_code == 52060101 & program$inst_major_code == "ECO"] <- "Economics"
+program$major_full_name[program$cip_code == 52080101 & program$inst_major_code == "FIN"] <- "Finance"
+program$major_full_name[program$cip_code == 52110101 & program$inst_major_code == "IB"] <- "International Business"
+program$major_full_name[program$cip_code == 52140101 & program$inst_major_code == "MKT"] <- "Marketing"
+program$major_full_name[program$cip_code == 54010100 & program$inst_major_code == "HIS"] <- "History"
+        ## fixing the program name--group name
+program$major_group_name[program$cip_code == 9010101 & program$inst_major_code == "SPC"] <- "Speech Communication" 
+program$major_group_name[program$cip_code == 9010201 & program$inst_major_code == "COM"] <- "Communication"
+program$major_group_name[program$cip_code == 9010201 & program$inst_major_code == "MAS"] <- "Mass Media"
+program$major_group_name[program$cip_code == 11010101 & program$inst_major_code == "CS"] <- "Computer Science"
+program$major_group_name[program$cip_code == 11040101 & program$inst_major_code == "CIS"] <- "Computer Information Sciences"
+program$major_group_name[program$cip_code == 13030100 & program$inst_major_code == "C&I"] <- "Curriculum and Instruction"
+program$major_group_name[program$cip_code == 13040101 & program$inst_major_code == "LDR"] <- "Leadership"
+program$major_group_name[program$cip_code == 13040301 & program$inst_major_code == "AC"] <- "Adult and Career Education"
+program$major_group_name[program$cip_code == 13040400 & program$inst_major_code == "OLE"] <- "On-line Endorsement"
+program$major_group_name[program$cip_code == 13040400 & program$inst_major_code == "OLT"] <- "On-line Teaching Certificate"
+program$major_group_name[program$cip_code == 13040401 & program$inst_major_code == "EDL"] <- "Educational Leadership"
+program$major_group_name[program$cip_code == 13050101 & program$inst_major_code == "IT"] <- "Instructional Technology"
+program$major_group_name[program$cip_code == 13100101 & program$inst_major_code == "SPE"] <- "Special Education"
+program$major_group_name[program$cip_code == 13100101 & program$inst_major_code == "SPD"] <- "Special Education"
+program$major_group_name[program$cip_code == 13100101 & program$inst_major_code == "SPEX"] <- "Special Education"
+program$major_group_name[program$cip_code == 13100101 & program$inst_major_code == "SPDX"] <- "Special Education"
+program$major_group_name[program$cip_code == 13110101 & program$inst_major_code == "SCO"] <- "School Counseling"
+program$major_group_name[program$cip_code == 13120301 & program$inst_major_code == "MGE"] <- "Middle Grades Education Grades 4-8"
+program$major_group_name[program$cip_code == 13120301 & program$inst_major_code == "MGEX"] <- "Middle Grades Education"
+program$major_group_name[program$cip_code == 13120301 & program$inst_major_code == "MGMS"] <- "Middle Grades Education Grades 4-8, Math & Science"
+program$major_group_name[program$cip_code == 13120302 & program$inst_major_code == "MID"] <- "Middle Grades Education"
+program$major_group_name[program$cip_code == 13120501 & program$inst_major_code == "SED"] <- "Secondary Education"
+program$major_group_name[program$cip_code == 13120502 & program$inst_major_code == "SCD"] <- "Secondary Education"
+program$major_group_name[program$cip_code == 13121001 & program$inst_major_code == "ECEX"] <- "Early Childhood Eductaion"
+program$major_group_name[program$cip_code == 13121001 & program$inst_major_code == "ECE"] <- "Early Childhood Education"
+program$major_group_name[program$cip_code == 13129901 & program$inst_major_code == "TL"] <- "Teacher Leadership"
+program$major_group_name[program$cip_code == 13129901 & program$inst_major_code == "CIAT"] <- "Accomplished Teaching"
+program$major_group_name[program$cip_code == 13129901 & program$inst_major_code == "CI"] <- "Curriculum and Instruction"
+program$major_group_name[program$cip_code == 13130201 & program$inst_major_code == "ARE"] <- "Art Education"
+program$major_group_name[program$cip_code == 13130900 & program$inst_major_code == "ACE"] <- "Adult & Career Education"
+program$major_group_name[program$cip_code == 13131201 & program$inst_major_code == "MUE"] <- "Music Education"
+program$major_group_name[program$cip_code == 13131401 & program$inst_major_code == "PE"] <- "Health and Physical Education"
+program$major_group_name[program$cip_code == 13131401 & program$inst_major_code == "PEX"] <- "Health and Physical Education"
+program$major_group_name[program$cip_code == 13131401 & program$inst_major_code == "COCP"] <- "Coaching Pedagogy in Physcial Education"
+program$major_group_name[program$cip_code == 13131501 & program$inst_major_code == "RDE"] <- "Reading Education"
+program$major_group_name[program$cip_code == 13132001 & program$inst_major_code == "WED"] <- "Workforce Education and Developement"
+program$major_group_name[program$cip_code == 13132001 & program$inst_major_code == "TIE"] <- "Workforce Education and Education"
+program$major_group_name[program$cip_code == 15069901 & program$inst_major_code == "HCP"] <- "Human Capital Performance"
+program$major_group_name[program$cip_code == 15069901 & program$inst_major_code == "HCPO"] <- "Human Capital Performance"
+program$major_group_name[program$cip_code == 16090101 & program$inst_major_code == "FR"] <- "French"
+program$major_group_name[program$cip_code == 16090501 & program$inst_major_code == "SPA"] <- "Spanish"
+program$major_group_name[program$cip_code == 16160301 & program$inst_major_code == "ASLX"] <- "American Sign Language"
+program$major_group_name[program$cip_code == 16160301 & program$inst_major_code == "ASL"] <- "American Sign Language"
+program$major_group_name[program$cip_code == 22030201 & program$inst_major_code == "LA"] <- "Legal Assistant Studies"
+program$major_group_name[program$cip_code == 23010101 & program$inst_major_code == "ENG"] <- "English"
+program$major_group_name[program$cip_code == 24010101 & program$inst_major_code == "AAA"] <- "Associate of Arts"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "LAS"] <- "Undecided"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "BAAC"] <- "Accounting"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "BAMG"] <- "Management"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "BAMK"] <- "Marketing"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "BA"] <- "Business Administration"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "BAFI"] <- "Finance"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "BAIB"] <- "International Business"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "EGS"] <- "Engineering Studies (2yr)"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "BAHC"] <- "Healthcare Administration"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "BAEC"] <- "Economics"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "SSS"] <- "Learning Support"
+program$major_group_name[program$cip_code == 24010299 & program$inst_major_code == "CCT"] <- "Transient"
+program$major_group_name[program$cip_code == 24019901 & program$inst_major_code == "INDS"] <- "Interdisplinary Studies"
+program$major_group_name[program$cip_code == 24019901 & program$inst_major_code == "GSP"] <- "Interdisplinary Studies"
+program$major_group_name[program$cip_code == 25010101 & program$inst_major_code == "LIS"] <- "Library & Information Studies"
+program$major_group_name[program$cip_code == 26010101 & program$inst_major_code == "BIO"] <- "Biology"
+program$major_group_name[program$cip_code == 27010101 & program$inst_major_code == "MAT"] <- "Mathematics"
+program$major_group_name[program$cip_code == 27030101 & program$inst_major_code == "MAA"] <- "Applied Mathematics"
+program$major_group_name[program$cip_code == 31059901 & program$inst_major_code == "PEP"] <- "Exercise Physiology"
+program$major_group_name[program$cip_code == 31059901 & program$inst_major_code == "EP"] <- "Exercise Physiology"
+program$major_group_name[program$cip_code == 38000100 & program$inst_major_code == "PHRS"] <- "Philosophy & Religious Studies"
+program$major_group_name[program$cip_code == 40020100 & program$inst_major_code == "AST"] <- "Astronomy"
+program$major_group_name[program$cip_code == 40050101 & program$inst_major_code == "CHM"] <- "Chemistry"
+program$major_group_name[program$cip_code == 40060101 & program$inst_major_code == "EVS"] <- "Environmental Geosciences"
+program$major_group_name[program$cip_code == 40080101 & program$inst_major_code == "PHY"] <- "Physics"
+program$major_group_name[program$cip_code == 42010100 & program$inst_major_code == "GIFT"] <- "Gifted Endorsement"
+program$major_group_name[program$cip_code == 42010101 & program$inst_major_code == "PSY"] <- "Psychology"
+program$major_group_name[program$cip_code == 42010101 & program$inst_major_code == "PSYX"] <- "Psychology"
+program$major_group_name[program$cip_code == 43010401 & program$inst_major_code == "CRM"] <- "Criminal Justice"
+program$major_group_name[program$cip_code == 43010401 & program$inst_major_code == "CRMO"] <- "Criminal Justice"
+program$major_group_name[program$cip_code == 44040100 & program$inst_major_code == "PA"] <- "Public Administration"
+program$major_group_name[program$cip_code == 44070100 & program$inst_major_code == "SWK"] <- "Social Work"
+program$major_group_name[program$cip_code == 45100101 & program$inst_major_code == "POS"] <- "Political Science"
+program$major_group_name[program$cip_code == 45110100 & program$inst_major_code == "SOCG"] <- "Sociology"
+program$major_group_name[program$cip_code == 45130100 & program$inst_major_code == "SOC"] <- "Sociology & Anthropology"
+program$major_group_name[program$cip_code == 50030101 & program$inst_major_code == "DANC"] <- "Dance"
+program$major_group_name[program$cip_code == 50040800 & program$inst_major_code == "ID"] <- "Interior Design"
+program$major_group_name[program$cip_code == 50050101 & program$inst_major_code == "THA"] <- "Theatre Arts"
+program$major_group_name[program$cip_code == 50070101 & program$inst_major_code == "ART"] <- "Art"
+program$major_group_name[program$cip_code == 50090101 & program$inst_major_code == "MUS"] <- "Music"
+program$major_group_name[program$cip_code == 50090301 & program$inst_major_code == "MUP"] <- "Music Performance"
+program$major_group_name[program$cip_code == 51020301 & program$inst_major_code == "SLPD"] <- "Clinical Doctorate in Speech Language Pathology"
+program$major_group_name[program$cip_code == 51020301 & program$inst_major_code == "COMD"] <- "Communication Disorders"
+program$major_group_name[program$cip_code == 51020301 & program$inst_major_code == "COMX"] <- "Communication Disorders"
+program$major_group_name[program$cip_code == 51069901 & program$inst_major_code == "DHG"] <- "Dental Hygiene"
+program$major_group_name[program$cip_code == 51070101 & program$inst_major_code == "HCAD"] <- "Healthcare Administration"
+program$major_group_name[program$cip_code == 51091301 & program$inst_major_code == "PAT"] <- "Athletic Training"
+program$major_group_name[program$cip_code == 51091301 & program$inst_major_code == "AT"] <- "Athletic Training"
+program$major_group_name[program$cip_code == 51150501 & program$inst_major_code == "MFT"] <- "Marriage & Family Therapy"
+program$major_group_name[program$cip_code == 51380101 & program$inst_major_code == "NUR"] <- "Nursing"
+program$major_group_name[program$cip_code == 51380101 & program$inst_major_code == "PNUR"] <- "Nursing"
+program$major_group_name[program$cip_code == 51380105 & program$inst_major_code == "MNUR"] <- "Nursing"
+program$major_group_name[program$cip_code == 51380105 & program$inst_major_code == "NRN"] <- "Nursing"
+program$major_group_name[program$cip_code == 52020101 & program$inst_major_code == "MBA"] <- "Master of Business Administration"
+program$major_group_name[program$cip_code == 52020101 & program$inst_major_code == "MGT"] <- "Managment"
+program$major_group_name[program$cip_code == 52021300 & program$inst_major_code == "ORGL"] <- "Organizational Leadership"
+program$major_group_name[program$cip_code == 52030100 & program$inst_major_code == "ACC"] <- "Accounting"
+program$major_group_name[program$cip_code == 52040101 & program$inst_major_code == "OAT"] <- "Office Administration & Technology"
+program$major_group_name[program$cip_code == 52040101 & program$inst_major_code == "OATX"] <- "Office Administration & Technology"
+program$major_group_name[program$cip_code == 52040101 & program$inst_major_code == "OATO"] <- "Office Administration & Technology"
+program$major_group_name[program$cip_code == 52040101 & program$inst_major_code == "ADS"] <- "Office Administration & Technology"
+program$major_group_name[program$cip_code == 52060101 & program$inst_major_code == "ECO"] <- "Economics"
+program$major_group_name[program$cip_code == 52080101 & program$inst_major_code == "FIN"] <- "Finance"
+program$major_group_name[program$cip_code == 52110101 & program$inst_major_code == "IB"] <- "International Business"
+program$major_group_name[program$cip_code == 52140101 & program$inst_major_code == "MKT"] <- "Marketing"
+program$major_group_name[program$cip_code == 54010100 & program$inst_major_code == "HIS"] <- "History"
+        ## fixing the program name--department name
+program$major_department[program$cip_code == 9010101 & program$inst_major_code == "SPC"] <- "Communication Arts" 
+program$major_department[program$cip_code == 9010201 & program$inst_major_code == "COM"] <- "Communication Arts"
+program$major_department[program$cip_code == 9010201 & program$inst_major_code == "MAS"] <- "Communication Arts"
+program$major_department[program$cip_code == 11010101 & program$inst_major_code == "CS"] <- "Mathematics & Computer Science"
+program$major_department[program$cip_code == 11040101 & program$inst_major_code == "CIS"] <- "Mathematics & Computer Science"
+program$major_department[program$cip_code == 13030100 & program$inst_major_code == "C&I"] <- "Curriculum, Leadership, & Technology"
+program$major_department[program$cip_code == 13040101 & program$inst_major_code == "LDR"] <- "Curriculum, Leadership, & Technology"
+program$major_department[program$cip_code == 13040301 & program$inst_major_code == "AC"] <- "Adult and Career Education"
+program$major_department[program$cip_code == 13040400 & program$inst_major_code == "OLE"] <- "Curriculum, Leadership, & Technology"
+program$major_department[program$cip_code == 13040400 & program$inst_major_code == "OLT"] <- "Curriculum, Leadership, & Technology"
+program$major_department[program$cip_code == 13040401 & program$inst_major_code == "EDL"] <- "Curriculum, Leadership, & Technology"
+program$major_department[program$cip_code == 13050101 & program$inst_major_code == "IT"] <- "Curriculum, Leadership, & Technology"
+program$major_department[program$cip_code == 13100101 & program$inst_major_code == "SPE"] <- "Early Childhood & Special Education"
+program$major_department[program$cip_code == 13100101 & program$inst_major_code == "SPD"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13100101 & program$inst_major_code == "SPEX"] <- "Early Childhood & Special Education"
+program$major_department[program$cip_code == 13100101 & program$inst_major_code == "SPDX"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13110101 & program$inst_major_code == "SCO"] <- "Psychology & Counseling"
+program$major_department[program$cip_code == 13120301 & program$inst_major_code == "MGE"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13120301 & program$inst_major_code == "MGEX"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13120301 & program$inst_major_code == "MGMS"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13120302 & program$inst_major_code == "MID"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13120501 & program$inst_major_code == "SED"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13120502 & program$inst_major_code == "SCD"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13121001 & program$inst_major_code == "ECEX"] <- "Early Childhood & Special Eductaion"
+program$major_department[program$cip_code == 13121001 & program$inst_major_code == "ECE"] <- "Early Childhood & Speical Education"
+program$major_department[program$cip_code == 13129901 & program$inst_major_code == "TL"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13129901 & program$inst_major_code == "CIAT"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13129901 & program$inst_major_code == "CI"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13130201 & program$inst_major_code == "ARE"] <- "Art"
+program$major_department[program$cip_code == 13130900 & program$inst_major_code == "ACE"] <- "Adult & Career Education"
+program$major_department[program$cip_code == 13131201 & program$inst_major_code == "MUE"] <- "Music"
+program$major_department[program$cip_code == 13131401 & program$inst_major_code == "PE"] <- "Kinesiology & Physical Education"
+program$major_department[program$cip_code == 13131401 & program$inst_major_code == "PEX"] <- "Kinesiology & Physical Education"
+program$major_department[program$cip_code == 13131401 & program$inst_major_code == "COCP"] <- "Kinesiology & Physical Education"
+program$major_department[program$cip_code == 13131501 & program$inst_major_code == "RDE"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 13132001 & program$inst_major_code == "WED"] <- "Adult & Career Education"
+program$major_department[program$cip_code == 13132001 & program$inst_major_code == "TIE"] <- "Adult & Career Education"
+program$major_department[program$cip_code == 15069901 & program$inst_major_code == "HCP"] <- "Adult & Career Education"
+program$major_department[program$cip_code == 15069901 & program$inst_major_code == "HCPO"] <- "Adult & Career Education"
+program$major_department[program$cip_code == 16090101 & program$inst_major_code == "FR"] <- "Modern & Classicial Languages"
+program$major_department[program$cip_code == 16090501 & program$inst_major_code == "SPA"] <- "Modern & Classicial Languages"
+program$major_department[program$cip_code == 16160301 & program$inst_major_code == "ASLX"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 16160301 & program$inst_major_code == "ASL"] <- "Middle Grades, Secondary, Reading, & Deaf Education"
+program$major_department[program$cip_code == 22030201 & program$inst_major_code == "LA"] <- "Political Science"
+program$major_department[program$cip_code == 23010101 & program$inst_major_code == "ENG"] <- "English"
+program$major_department[program$cip_code == 24010101 & program$inst_major_code == "AAA"] <- "Undeclared Department"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "LAS"] <- "Undeclared Department"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "BAAC"] <- "Accounting"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "BAMG"] <- "Management & Healthcare Administration"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "BAMK"] <- "Marketing & International Business"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "BA"] <- "Undeclared Department"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "BAFI"] <- "Economics & Finance"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "BAIB"] <- "Marketing & International Business"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "EGS"] <- "Physics, Astronomy, & Geosciences"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "BAHC"] <- "Management & Healthcare Administration"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "BAEC"] <- "Economics & Finance"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "SSS"] <- "Undeclared Department"
+program$major_department[program$cip_code == 24010299 & program$inst_major_code == "CCT"] <- "Undeclared Department"
+program$major_department[program$cip_code == 24019901 & program$inst_major_code == "INDS"] <- "General Studies"
+program$major_department[program$cip_code == 24019901 & program$inst_major_code == "GSP"] <- "General Studies"
+program$major_department[program$cip_code == 25010101 & program$inst_major_code == "LIS"] <- "Library & Information Studies"
+program$major_department[program$cip_code == 26010101 & program$inst_major_code == "BIO"] <- "Biology"
+program$major_department[program$cip_code == 27010101 & program$inst_major_code == "MAT"] <- "Mathematics & Computer Science"
+program$major_department[program$cip_code == 27030101 & program$inst_major_code == "MAA"] <- "Mathematics & Computer Science"
+program$major_department[program$cip_code == 31059901 & program$inst_major_code == "PEP"] <- "Health Sciences"
+program$major_department[program$cip_code == 31059901 & program$inst_major_code == "EP"] <- "Health Sciences"
+program$major_department[program$cip_code == 38000100 & program$inst_major_code == "PHRS"] <- "Philosophy & Religious Studies"
+program$major_department[program$cip_code == 40020100 & program$inst_major_code == "AST"] <- "Phyics, Astronomy, & Geosciences"
+program$major_department[program$cip_code == 40050101 & program$inst_major_code == "CHM"] <- "Chemistry"
+program$major_department[program$cip_code == 40060101 & program$inst_major_code == "EVS"] <- "Physics, Astronomy, & Geosciences"
+program$major_department[program$cip_code == 40080101 & program$inst_major_code == "PHY"] <- "Physics, Astronomy, & Geosciences"
+program$major_department[program$cip_code == 42010100 & program$inst_major_code == "GIFT"] <- "Psychology & Counseling"
+program$major_department[program$cip_code == 42010101 & program$inst_major_code == "PSY"] <- "Psychology & Counseling"
+program$major_department[program$cip_code == 42010101 & program$inst_major_code == "PSYX"] <- "Psychology & Counseling"
+program$major_department[program$cip_code == 43010401 & program$inst_major_code == "CRM"] <- "Sociology, Antropology, & Criminal Justice"
+program$major_department[program$cip_code == 43010401 & program$inst_major_code == "CRMO"] <- "Sociology, Antropology, & Criminal Justice"
+program$major_department[program$cip_code == 44040100 & program$inst_major_code == "PA"] <- "Political Science"
+program$major_department[program$cip_code == 44070100 & program$inst_major_code == "SWK"] <- "Social Work"
+program$major_department[program$cip_code == 45100101 & program$inst_major_code == "POS"] <- "Political Science"
+program$major_department[program$cip_code == 45110100 & program$inst_major_code == "SOCG"] <- "Sociology, Antropology, & Criminal Justice"
+program$major_department[program$cip_code == 45130100 & program$inst_major_code == "SOC"] <- "Sociology, Antropology, & Criminal Justice"
+program$major_department[program$cip_code == 50030101 & program$inst_major_code == "DANC"] <- "Communication Arts"
+program$major_department[program$cip_code == 50040800 & program$inst_major_code == "ID"] <- "Art"
+program$major_department[program$cip_code == 50050101 & program$inst_major_code == "THA"] <- "Communication Arts"
+program$major_department[program$cip_code == 50070101 & program$inst_major_code == "ART"] <- "Art"
+program$major_department[program$cip_code == 50090101 & program$inst_major_code == "MUS"] <- "Music"
+program$major_department[program$cip_code == 50090301 & program$inst_major_code == "MUP"] <- "Music"
+program$major_department[program$cip_code == 51020301 & program$inst_major_code == "SLPD"] <- "Communication Science & Disorders"
+program$major_department[program$cip_code == 51020301 & program$inst_major_code == "COMD"] <- "Communication Science & Disorders"
+program$major_department[program$cip_code == 51020301 & program$inst_major_code == "COMX"] <- "Communication Science & Disorders"
+program$major_department[program$cip_code == 51069901 & program$inst_major_code == "DHG"] <- "Nursing"
+program$major_department[program$cip_code == 51070101 & program$inst_major_code == "HCAD"] <- "Management & Healthcare Administration"
+program$major_department[program$cip_code == 51091301 & program$inst_major_code == "PAT"] <- "Health Sciences"
+program$major_department[program$cip_code == 51091301 & program$inst_major_code == "AT"] <- "Health Sciences"
+program$major_department[program$cip_code == 51150501 & program$inst_major_code == "MFT"] <- "Marriage & Family Therapy"
+program$major_department[program$cip_code == 51380101 & program$inst_major_code == "NUR"] <- "Nursing"
+program$major_department[program$cip_code == 51380101 & program$inst_major_code == "PNUR"] <- "Nursing"
+program$major_department[program$cip_code == 51380105 & program$inst_major_code == "MNUR"] <- "Nursing"
+program$major_department[program$cip_code == 51380105 & program$inst_major_code == "NRN"] <- "Nursing"
+program$major_department[program$cip_code == 52020101 & program$inst_major_code == "MBA"] <- "Undeclared Department"
+program$major_department[program$cip_code == 52020101 & program$inst_major_code == "MGT"] <- "Managment & Healthcare Administration"
+program$major_department[program$cip_code == 52021300 & program$inst_major_code == "ORGL"] <- "Organizational Leadership"
+program$major_department[program$cip_code == 52030100 & program$inst_major_code == "ACC"] <- "Accounting"
+program$major_department[program$cip_code == 52040101 & program$inst_major_code == "OAT"] <- "Adult & Career Education"
+program$major_department[program$cip_code == 52040101 & program$inst_major_code == "OATX"] <- "Adult & Career Education"
+program$major_department[program$cip_code == 52040101 & program$inst_major_code == "OATO"] <- "Adult & Career Education"
+program$major_department[program$cip_code == 52040101 & program$inst_major_code == "ADS"] <- "Adult & Career Education"
+program$major_department[program$cip_code == 52060101 & program$inst_major_code == "ECO"] <- "Economics & Finance"
+program$major_department[program$cip_code == 52080101 & program$inst_major_code == "FIN"] <- "Finance & Finance"
+program$major_department[program$cip_code == 52110101 & program$inst_major_code == "IB"] <- "Marketing & International Business"
+program$major_department[program$cip_code == 52140101 & program$inst_major_code == "MKT"] <- "Marketing & International Business"
+program$major_department[program$cip_code == 54010100 & program$inst_major_code == "HIS"] <- "History"
+        ## fixing the program name--college name
+program$major_college_initials[program$cip_code == 9010101 & program$inst_major_code == "SPC"] <- "COTA" 
+program$major_college_initials[program$cip_code == 9010201 & program$inst_major_code == "COM"] <- "COTA"
+program$major_college_initials[program$cip_code == 9010201 & program$inst_major_code == "MAS"] <- "COTA"
+program$major_college_initials[program$cip_code == 11010101 & program$inst_major_code == "CS"] <- "COAS"
+program$major_college_initials[program$cip_code == 11040101 & program$inst_major_code == "CIS"] <- "COAS"
+program$major_college_initials[program$cip_code == 13030100 & program$inst_major_code == "C&I"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13040101 & program$inst_major_code == "LDR"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13040301 & program$inst_major_code == "AC"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13040400 & program$inst_major_code == "OLE"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13040400 & program$inst_major_code == "OLT"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13040401 & program$inst_major_code == "EDL"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13050101 & program$inst_major_code == "IT"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13100101 & program$inst_major_code == "SPE"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13100101 & program$inst_major_code == "SPD"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13100101 & program$inst_major_code == "SPEX"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13100101 & program$inst_major_code == "SPDX"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13110101 & program$inst_major_code == "SCO"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13120301 & program$inst_major_code == "MGE"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13120301 & program$inst_major_code == "MGEX"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13120301 & program$inst_major_code == "MGMS"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13120302 & program$inst_major_code == "MID"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13120501 & program$inst_major_code == "SED"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13120502 & program$inst_major_code == "SCD"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13121001 & program$inst_major_code == "ECEX"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13121001 & program$inst_major_code == "ECE"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13129901 & program$inst_major_code == "TL"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13129901 & program$inst_major_code == "CIAT"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13129901 & program$inst_major_code == "CI"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13130201 & program$inst_major_code == "ARE"] <- "COTA"
+program$major_college_initials[program$cip_code == 13130900 & program$inst_major_code == "ACE"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13131201 & program$inst_major_code == "MUE"] <- "COTA"
+program$major_college_initials[program$cip_code == 13131401 & program$inst_major_code == "PE"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13131401 & program$inst_major_code == "PEX"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13131401 & program$inst_major_code == "COCP"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13131501 & program$inst_major_code == "RDE"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13132001 & program$inst_major_code == "WED"] <- "COEHS"
+program$major_college_initials[program$cip_code == 13132001 & program$inst_major_code == "TIE"] <- "COEHS"
+program$major_college_initials[program$cip_code == 15069901 & program$inst_major_code == "HCP"] <- "COEHS"
+program$major_college_initials[program$cip_code == 15069901 & program$inst_major_code == "HCPO"] <- "COEHS"
+program$major_college_initials[program$cip_code == 16090101 & program$inst_major_code == "FR"] <- "COAS"
+program$major_college_initials[program$cip_code == 16090501 & program$inst_major_code == "SPA"] <- "COAS"
+program$major_college_initials[program$cip_code == 16160301 & program$inst_major_code == "ASLX"] <- "COEHS"
+program$major_college_initials[program$cip_code == 16160301 & program$inst_major_code == "ASL"] <- "COEHS"
+program$major_college_initials[program$cip_code == 22030201 & program$inst_major_code == "LA"] <- "COAS"
+program$major_college_initials[program$cip_code == 23010101 & program$inst_major_code == "ENG"] <- "COAS"
+program$major_college_initials[program$cip_code == 24010101 & program$inst_major_code == "AAA"] <- "COAS"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "LAS"] <- "COAS"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "BAAC"] <- "COBA"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "BAMG"] <- "COBA"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "BAMK"] <- "COBA"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "BA"] <- "COBA"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "BAFI"] <- "COBA"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "BAIB"] <- "COBA"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "EGS"] <- "COAS"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "BAHC"] <- "COBA"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "BAEC"] <- "COBA"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "SSS"] <- "COAS"
+program$major_college_initials[program$cip_code == 24010299 & program$inst_major_code == "CCT"] <- "COAS"
+program$major_college_initials[program$cip_code == 24019901 & program$inst_major_code == "INDS"] <- "COAS"
+program$major_college_initials[program$cip_code == 24019901 & program$inst_major_code == "GSP"] <- "COAS"
+program$major_college_initials[program$cip_code == 25010101 & program$inst_major_code == "LIS"] <- "COEHS"
+program$major_college_initials[program$cip_code == 26010101 & program$inst_major_code == "BIO"] <- "COAS"
+program$major_college_initials[program$cip_code == 27010101 & program$inst_major_code == "MAT"] <- "COAS"
+program$major_college_initials[program$cip_code == 27030101 & program$inst_major_code == "MAA"] <- "COAS"
+program$major_college_initials[program$cip_code == 31059901 & program$inst_major_code == "PEP"] <- "CONHS"
+program$major_college_initials[program$cip_code == 31059901 & program$inst_major_code == "EP"] <- "CONHS"
+program$major_college_initials[program$cip_code == 38000100 & program$inst_major_code == "PHRS"] <- "COAS"
+program$major_college_initials[program$cip_code == 40020100 & program$inst_major_code == "AST"] <- "COAS"
+program$major_college_initials[program$cip_code == 40050101 & program$inst_major_code == "CHM"] <- "COAS"
+program$major_college_initials[program$cip_code == 40060101 & program$inst_major_code == "EVS"] <- "COAS"
+program$major_college_initials[program$cip_code == 40080101 & program$inst_major_code == "PHY"] <- "COAS"
+program$major_college_initials[program$cip_code == 42010100 & program$inst_major_code == "GIFT"] <- "COEHS"
+program$major_college_initials[program$cip_code == 42010101 & program$inst_major_code == "PSY"] <- "COEHS"
+program$major_college_initials[program$cip_code == 42010101 & program$inst_major_code == "PSYX"] <- "COEHS"
+program$major_college_initials[program$cip_code == 43010401 & program$inst_major_code == "CRM"] <- "COAS"
+program$major_college_initials[program$cip_code == 43010401 & program$inst_major_code == "CRMO"] <- "COAS"
+program$major_college_initials[program$cip_code == 44040100 & program$inst_major_code == "PA"] <- "COAS"
+program$major_college_initials[program$cip_code == 44070100 & program$inst_major_code == "SWK"] <- "COEHS"
+program$major_college_initials[program$cip_code == 45100101 & program$inst_major_code == "POS"] <- "COAS"
+program$major_college_initials[program$cip_code == 45110100 & program$inst_major_code == "SOCG"] <- "COAS"
+program$major_college_initials[program$cip_code == 45130100 & program$inst_major_code == "SOC"] <- "COAS"
+program$major_college_initials[program$cip_code == 50030101 & program$inst_major_code == "DANC"] <- "COTA"
+program$major_college_initials[program$cip_code == 50040800 & program$inst_major_code == "ID"] <- "COTA"
+program$major_college_initials[program$cip_code == 50050101 & program$inst_major_code == "THA"] <- "COTA"
+program$major_college_initials[program$cip_code == 50070101 & program$inst_major_code == "ART"] <- "COTA"
+program$major_college_initials[program$cip_code == 50090101 & program$inst_major_code == "MUS"] <- "COTA"
+program$major_college_initials[program$cip_code == 50090301 & program$inst_major_code == "MUP"] <- "COTA"
+program$major_college_initials[program$cip_code == 51020301 & program$inst_major_code == "SLPD"] <- "COEHS"
+program$major_college_initials[program$cip_code == 51020301 & program$inst_major_code == "COMD"] <- "COEHS"
+program$major_college_initials[program$cip_code == 51020301 & program$inst_major_code == "COMX"] <- "COEHS"
+program$major_college_initials[program$cip_code == 51069901 & program$inst_major_code == "DHG"] <- "CONHS"
+program$major_college_initials[program$cip_code == 51070101 & program$inst_major_code == "HCAD"] <- "COBA"
+program$major_college_initials[program$cip_code == 51091301 & program$inst_major_code == "PAT"] <- "CONHS"
+program$major_college_initials[program$cip_code == 51091301 & program$inst_major_code == "AT"] <- "CONHS"
+program$major_college_initials[program$cip_code == 51150501 & program$inst_major_code == "MFT"] <- "COEHS"
+program$major_college_initials[program$cip_code == 51380101 & program$inst_major_code == "NUR"] <- "CONHS"
+program$major_college_initials[program$cip_code == 51380101 & program$inst_major_code == "PNUR"] <- "CONHS"
+program$major_college_initials[program$cip_code == 51380105 & program$inst_major_code == "MNUR"] <- "CONHS"
+program$major_college_initials[program$cip_code == 51380105 & program$inst_major_code == "NRN"] <- "CONHS"
+program$major_college_initials[program$cip_code == 52020101 & program$inst_major_code == "MBA"] <- "COBA"
+program$major_college_initials[program$cip_code == 52020101 & program$inst_major_code == "MGT"] <- "COBA"
+program$major_college_initials[program$cip_code == 52021300 & program$inst_major_code == "ORGL"] <- "COAS"
+program$major_college_initials[program$cip_code == 52030100 & program$inst_major_code == "ACC"] <- "COBA"
+program$major_college_initials[program$cip_code == 52040101 & program$inst_major_code == "OAT"] <- "COEHS"
+program$major_college_initials[program$cip_code == 52040101 & program$inst_major_code == "OATX"] <- "COEHS"
+program$major_college_initials[program$cip_code == 52040101 & program$inst_major_code == "OATO"] <- "COEHS"
+program$major_college_initials[program$cip_code == 52040101 & program$inst_major_code == "ADS"] <- "COEHS"
+program$major_college_initials[program$cip_code == 52060101 & program$inst_major_code == "ECO"] <- "COBA"
+program$major_college_initials[program$cip_code == 52080101 & program$inst_major_code == "FIN"] <- "COBA"
+program$major_college_initials[program$cip_code == 52110101 & program$inst_major_code == "IB"] <- "COBA"
+program$major_college_initials[program$cip_code == 52140101 & program$inst_major_code == "MKT"] <- "COBA"
+program$major_college_initials[program$cip_code == 54010100 & program$inst_major_code == "HIS"] <- "COAS"
+        ## counting of times
+program <- arrange(program, student_inst_id)
+id <- program %>% select(student_inst_id) %>% group_by(student_inst_id) %>% summarize(count = n())
+program <- program %>% left_join(id)
+                ## giving the highest degree in conjuction with their 
+                ## student level credit as their primary major
+stu.level <- enrollment %>% select(student_inst_id, student_academic_level_desc, student_level_nbr)
+program <- program %>% left_join(stu.level)
+rm(stu.level)
+                        ## degree selection level
+degree_level <- data.frame(degree_level_desc = unique(program$degree_level_desc))
+degree_level$level[degree_level$degree_level_desc == "Bachelors"] <- 4
+degree_level$level[degree_level$degree_level_desc == "Masters"] <- 5
+degree_level$level[degree_level$degree_level_desc == "Education Specialist"] <- 6
+degree_level$level[degree_level$degree_level_desc == "Doctorate"] <- 7
+degree_level$level[degree_level$degree_level_desc == "Non-Degree"] <- 1
+degree_level$level[degree_level$degree_level_desc == "Associate"] <- 3
+degree_level$level[degree_level$degree_level_desc == "Career Associate"] <- 2
+degree_level$level[degree_level$degree_level_desc == "Other"] <- 0
+degree_level$degree_level_desc <- as.character(degree_level$degree_level_desc)
+                        ## adding it to the program
+program <- program %>% left_join(degree_level) 
+                        ## sorting to ensure the correct levels are on top
+program <- program %>% arrange(student_inst_id, fos_priority_no, desc(level))
+                        ## creating an order for selection
+for (i in 2:nrow(program)) {
+        program[1, 19] <- 1
+        program[i, 19] <- if (program[i, 1] == program[(i-1), 1]) 
+        {program[(i-1), 19] + 1} else {1}
+        colnames(program)[19] <- "selection_order"
+}
+                ## one major
+one <- program %>% filter(selection_order == 1)
+colnames(one)[-1] <- paste(colnames(one)[-1], 1, sep = "_")
+        ## two majors
+two <- program %>% filter(selection_order == 2)
+colnames(two)[-1] <- paste(colnames(two)[-1], 2, sep = "_")
+        ## three major
+three <- program %>% filter(selection_order == 3)
+colnames(three)[-1] <- paste(colnames(three)[-1], 3, sep = "_")
+                ## removing unneeded columns
+one <- one[, -(15:19)]
+two <- two[, -(15:19)]
+three <- three[, -(15:19)]
+                ## attaching the programs together
+program <- one %>% left_join(two) %>% left_join(three)
+rm(one, two, three, id, degree_level)
+        ## attaching the program to the enrollment
+enrollment <- enrollment %>% left_join(program)
+rm(program)
+
+## Step 8: importing the advanced standing and preparing it
+advance <- read.csv("./Data/Enrollment/advanced_standing.csv", stringsAsFactors = FALSE)
+        ## lower casing column names
+colnames(advance) <- tolower(colnames(advance))
+        ## selecting the columns needed
+advance <- advance %>% select(student_inst_id, advanced_standing_code, advanced_hrs_earned)
+        ## fixing the advanced standing codes
+advance$advanced_standing_desc[advance$advanced_standing_code == 999903] <- "ACE"
+advance$advanced_standing_desc[advance$advanced_standing_code == 999901] <- "AP"
+advance$advanced_standing_desc[advance$advanced_standing_code == 999902] <- "CLEP"
+advance$advanced_standing_desc[advance$advanced_standing_code == 999904] <- "DANTES"
+advance$advanced_standing_desc[advance$advanced_standing_code == 999906] <- "IB"
+advance$advanced_standing_desc[advance$advanced_standing_code == 999905] <- "Other"
+        ## arranging the data
+advance <- advance %>% select(student_inst_id, advanced_standing_desc, advanced_hrs_earned) %>%
+        spread(advanced_standing_desc, advanced_hrs_earned)
+        ## attaching the data to the enrollment
+enrollment <- enrollment %>% left_join(advance)
+rm(advance)
+
+## Step 9: Importing in the file and preparing it
+fees <- read.csv("./Data/Enrollment/fees.csv", stringsAsFactors = FALSE)
+        ## lower casing the column names
+colnames(fees) <- tolower(colnames(fees))
+        ## selecting the columns needed
+fees <- fees %>% select(student_inst_id, fee_class_code)
+fees$ind <- "Yes"
+        ##creating the fee desc
+fees$fees_desc[fees$fee_class_code == "SHIW"] <- "waiver_stu_health_ins"
+fees$fees_desc[fees$fee_class_code == "WBCR"] <- "waiver_border_county"
+fees$fees_desc[fees$fee_class_code == "WEMD"] <- "waiver_usg_employee"
+fees$fees_desc[fees$fee_class_code == "WFTE"] <- "waiver_public_school_employee"
+fees$fees_desc[fees$fee_class_code == "WIGA"] <- "waiver_graduate_assistant"
+fees$fees_desc[fees$fee_class_code == "WINT"] <- "waiver_international_stu"
+fees$fees_desc[fees$fee_class_code == "WISC"] <- "waiver_senior_citizen"
+fees$fees_desc[fees$fee_class_code == "WITR"] <- "waiver_tuition_remission"
+fees$fees_desc[fees$fee_class_code == "WMIL"] <- "waiver_military"
+fees$fees_desc[fees$fee_class_code == "WSUP"] <- "waiver_superior_oos_stu"
+        ## arranging the data 
+fees <- fees %>% select(student_inst_id, fees_desc, ind) %>%
+        spread(fees_desc, ind)
+        ## attaching the data to enrollment
+enrollment <- enrollment %>% left_join(fees)
+rm(fees)
+
+## Step 9: importing in the military file and preparing it
+military <- read.csv("./Data/Enrollment/military.csv", stringsAsFactors = FALSE)
+        ## lower casing the column names
+colnames(military) <- tolower(colnames(military))
+        ## fixing military code
+military$military_ind <- "Spouse or Dependent"
+military$military_ind[military$military_code == "MAF"] <- "Active"
+military$military_ind[military$military_code == "MAA"] <- "Active"
+military$military_ind[military$military_code == "MAC"] <- "Active"
+military$military_ind[military$military_code == "MAM"] <- "Active"
+military$military_ind[military$military_code == "MAN"] <- "Active"
+military$military_ind[military$military_code == "MV"] <- "Veteran"
+military$military_ind[military$military_code == "MG"] <- "National Guard"
+military$military_ind[military$military_code == "MR"] <- "Reserves"
+        ## Military Branch
+military$military_branch[military$military_code == "MAF"] <- "Air Force"
+military$military_branch[military$military_code == "MAA"] <- "Army"
+military$military_branch[military$military_code == "MAC"] <- "Coast Guard"
+military$military_branch[military$military_code == "MAM"] <- "Marines"
+military$military_branch[military$military_code == "MAN"] <- "Navy"
+military$military_branch[military$military_code == "MV"] <- "Veteran"
+military$military_branch[military$military_code == "MG"] <- "National Guard"
+military$military_branch[military$military_code == "MR"] <- "Reserves"
+military$military_branch[military$military_code == "RAF"] <- "Air Force"
+military$military_branch[military$military_code == "RAA"] <- "Army"
+military$military_branch[military$military_code == "RAC"] <- "Coast Guard"
+military$military_branch[military$military_code == "RAM"] <- "Marines"
+military$military_branch[military$military_code == "RAN"] <- "Navy"
+military$military_branch[military$military_code == "RV"] <- "Veteran"
+military$military_branch[military$military_code == "RG"] <- "National Guard"
+military$military_branch[military$military_code == "RR"] <- "Reserves"
+        ## selecting the columns needed
+military <- military %>% select(student_inst_id, military_ind, military_branch)
+        ## military level
+military$level[military$military_ind == "Active"] <- 1
+military$level[military$military_ind == "Veteran"] <- 2
+military$level[military$military_ind == "National Guard"] <- 3
+military$level[military$military_ind == "Reserves"] <- 4
+military$level[military$military_ind == "Spouse or Dependent"] <- 5
+        ## sorting the students
+military <- military %>% arrange(student_inst_id, level)
+        ## count level
+for (i in 2:nrow(military)) {
+        military[1, 5] <- 1
+        military[i, 5] <- if (military[i, 1] == military[(i-1), 1]) 
+        {military[(i-1), 5] + 1} else {1}
+        colnames(military)[5] <- "trump_card"
+}
+        ## selecting the higher
+military <- military %>% filter(trump_card == 1)
+        ## attaching the military data to the enrollment data
+enrollment <- enrollment %>% left_join(military)
+rm(military)
+
+## Step 10: Importing in the cpc ls file and preparing it
+cpc <- read.csv("./Data/Enrollment/cpc_ls_requirement.csv", stringsAsFactors = FALSE)
+        ## lower casing the column names
+colnames(cpc) <- tolower(colnames(cpc))
+        ## selecting columns needed
+cpc <- cpc %>% select(student_inst_id, 
+                      ls_english_completion_date, ls_math_completion_date, 
+                      ls_reading_completion_date, ls_req_english_code, 
+                      ls_req_math_code, ls_req_reading_code, ls_enroll_english_code, 
+                      ls_enroll_math_code, ls_enroll_reading_code, cpe_comp_eng_ex_date,
+                      cpe_comp_math_ex_date, cpe_comp_read_ex_date) 
+        ## attaching to the enrollment file
+enrollment <- enrollment %>% left_join(cpc)
+rm(cpc)
+
+## Step 11: Importing in the cpc regents file and preparing it
+cpc <- read.csv("./Data/Enrollment/cpc_regents.csv", stringsAsFactors = FALSE)
+        ## lower casing the column names
+colnames(cpc) <- tolower(colnames(cpc))
+        ## selecting columns needed
+cpc <- cpc %>% select(student_inst_id, 
+                      regents_test_essay_code, regents_test_reading_code, 
+                      cpc_english_code, cpc_math_code, cpc_science_code, 
+                      cpc_social_science_code, cpc_foreign_language_code)
+        ## attaching to the enrollment file
+enrollment <- enrollment %>% left_join(cpc)
+rm(cpc)
+
+## Step 12: Importing i the test codes and preparing it
+test <- read.csv("./Data/Enrollment/test_scores.csv", stringsAsFactors = FALSE)
+        ## lower casing the column names
+colnames(test) <- tolower(colnames(test))
+        ## test codes
+codes <- read.csv("V:/dept/SRA/Enrollment/Enrollment--Fall, Spring, and Summer/Rscript to Combine Official Data/Data/Enrollment/test_codes.csv", stringsAsFactors = FALSE)[, 1:3]
+codes$Test.Code.Description <- gsub('([[:punct:]])|\\s+','_', paste(codes$Test.Code.Description, 
+                                                                    codes$Test.Component.Description, sep = "_"))
+codes <- codes[, -3]
+colnames(codes) <- c("test_code", "test_name")
+        ## adding the test code name
+test <- test %>% left_join(codes)
+rm(codes)
+        ## selecting the columns needed
+test <- test %>% select(student_inst_id, test_name, test_score) %>% 
+        arrange(student_inst_id) %>%
+        spread(test_name, test_score)
+        ## attaching the data to the enrollment file
+enrollment <- enrollment %>% left_join(test)
+rm(test, fall.date, i)
+
+## Step 12: Kicking out the data file
+write.csv(enrollment, "official_enrollment_file.csv")
