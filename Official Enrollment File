@@ -914,7 +914,7 @@ cpc <- cpc %>% select(student_inst_id,
 enrollment <- enrollment %>% left_join(cpc)
 rm(cpc)
 
-## Step 12: Importing i the test codes and preparing it
+## Step 12: Importing in the test codes and preparing it
 test <- read.csv("./Data/Enrollment/test_scores.csv", stringsAsFactors = FALSE)
         ## lower casing the column names
 colnames(test) <- tolower(colnames(test))
@@ -1001,7 +1001,7 @@ course2$type[is.na(course2$Main) &
 course1 <- course1[, -(2:3)]
 colnames(course1)[2] <- "online_ind"
 course2 <- course2[, -(2:4)]
-colnames(course1)[2] <- "location_ind"
+colnames(course2)[2] <- "location_ind"
         ## attaching the data to the enrollment file
 enrollment <- enrollment %>% left_join(course1) %>% left_join(course2)
 rm(campus, course, course1, course2)
