@@ -935,5 +935,76 @@ test <- test %>% select(student_inst_id, test_name, test_score) %>%
 enrollment <- enrollment %>% left_join(test)
 rm(test, fall.date, i)
 
-## Step 12: Kicking out the data file
-write.csv(enrollment, "official_enrollment_file.csv")
+## Step 13: Importing the student course and prepare it for the online student indicators
+course <- read.csv("./Data/Course/course_enrollment.csv", stringsAsFactors = FALSE)
+course <- course %>% filter(COURSE_ENROLLMENT_IND == "CNTENRLY") %>% 
+        select(STUDENT_INST_ID,COURSE_SEC_IDENTIFIER)
+campus <- read.csv("./Data/Course/course_section.csv", stringsAsFactors = FALSE)[, c(4, 23)]
+course <- course %>% left_join(campus)
+rm(campus)
+        ## lower casing the column names
+colnames(course) <- tolower(colnames(course))
+        ## creating student campus types
+campus <- data.frame(campus_code = unique(course$campus_code))
+campus$campus_code <- as.character(campus$campus_code)
+                ## type 1
+campus$type[campus$campus ==  "A"] <- "Not_Online" ## Main Campus
+campus$type[campus$campus ==  "5"] <- "Online" ## Online Campus
+campus$type[campus$campus ==  "Z"] <- "Not_Online" ## Off campus
+campus$type[campus$campus ==  "7"] <- "Online" ## WebMBA
+campus$type[campus$campus ==  "EM"] <- "Online" ## eMajor
+campus$type[campus$campus ==  "3"] <- "Not_Online" ## Military Base
+campus$type[campus$campus ==  "C"] <- "Not_Online" ## Kingsbay
+campus$type[campus$campus ==  "DHY"] <- "Not_Online" ## Wiregrass
+campus$type[campus$campus ==  "GML"] <- "Online" ## GOML
+campus$type[campus$campus ==  "6"] <- "Online" ## eCore
+                ## type 2
+campus$type2[campus$campus ==  "A"] <- "Main" ## Main Campus
+campus$type2[campus$campus ==  "5"] <- "Online" ## Online Campus
+campus$type2[campus$campus ==  "Z"] <- "Off_Campus" ## Off campus
+campus$type2[campus$campus ==  "7"] <- "Online" ## WebMBA
+campus$type2[campus$campus ==  "EM"] <- "Online" ## eMajor
+campus$type2[campus$campus ==  "3"] <- "Off_Campus" ## Military Base
+campus$type2[campus$campus ==  "C"] <- "Off_Campus" ## Kingsbay
+campus$type2[campus$campus ==  "DHY"] <- "Off_Campus" ## Wiregrass
+campus$type2[campus$campus ==  "GML"] <- "Online" ## GOML
+campus$type2[campus$campus ==  "6"] <- "Online" ## eCore
+        ## Attaching the type
+course <- course %>% left_join(campus)
+course1 <- course %>% select(student_inst_id, type) %>%
+        group_by(student_inst_id, type) %>% 
+        summarize(count = n()) %>%
+        spread(type, count)
+course1$type <- ifelse(is.na(course1$Not_Online), "Fully Online", 
+                       ifelse(is.na(course1$Online), "Not Online", 
+                              ifelse(!is.na(course1$Not_Online) &
+                                             !is.na(course1$Online), "Not Fully Online", "Check")))
+course2 <- course %>% select(student_inst_id, type2) %>%
+        group_by(student_inst_id, type2) %>% 
+        summarize(count = n()) %>%
+        spread(type2, count)
+course2$type <- ifelse(is.na(course2$Off_Campus) &
+                               is.na(course2$Online), "Main Campus",
+                       ifelse(is.na(course2$Main) &
+                                      is.na(course2$Online), "Off Campus", 
+                              ifelse(is.na(course2$Main) &
+                                             is.na(course2$Off_Campus), "Online Campus", NA)))
+course2$type[is.na(course2$Online) &
+                     !is.na(course2$Main) &
+                     !is.na(course2$Off_Campus)] <- "Main & Off Campus"
+course2$type[is.na(course2$Off_Campus) &
+                     !is.na(course2$Main) &
+                     !is.na(course2$Online)] <- "Main & Online Campus"
+course2$type[is.na(course2$Main) &
+                     !is.na(course2$Off_Campus) &
+                     !is.na(course2$Online)] <- "Off & Online Campus"
+course1 <- course1[, -(2:3)]
+colnames(course1)[2] <- "online_ind"
+course2 <- course2[, -(2:4)]
+colnames(course1)[2] <- "location_ind"
+        ## attaching the data to the enrollment file
+enrollment <- enrollment %>% left_join(course1) %>% left_join(course2)
+rm(campus, course, course1, course2)
+
+## Step 14: Kicking out the results
+write.csv(enrollment, "official_enrollment.csv")
